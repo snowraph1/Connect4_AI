@@ -3,6 +3,8 @@ import pygame
 import math
 from pygame.locals import *
 from enum import Enum
+import random
+import copy
 
 pygame.init()
 pygame.font.init()
@@ -30,6 +32,8 @@ fond = pygame.transform.scale(fond, (800, 800))
 
 cercles = pygame.image.load(os.path.join(images_path, "Cercles.png"))
 cercles = pygame.transform.scale(cercles, (800, 800))
+
+gameOver = False
 
 class Couleur(Enum):
     JAUNE = 1
@@ -76,7 +80,7 @@ def GetColoneSelected ():
     
     return col
 
-def PlacerJeton (col, couleur):
+def PlacerJeton (col, couleur, tableau):
     jeton = None
     
     if couleur == Couleur.JAUNE:
@@ -84,28 +88,29 @@ def PlacerJeton (col, couleur):
     else:
         jeton = jetonRouge
     
-    range = VerifierColonne(col)
+    range = VerifierColonne(col, tableau)
     
     if range > -1:
-        jeu[col - 1][range] = Jeton(jeton, [(col - 1) * 108 + 26, range * 108 + 83], couleur)
+        print("Placé " + str(col - 1) + " " + str(range))
+        tableau[col - 1][range] = Jeton(jeton, [(col - 1) * 108 + 26, range * 108 + 83], couleur)
         #print("Jeton placé")
-        TestGagnant(col - 1, range, couleur)
+        TestGagnant(col - 1, range, couleur, tableau)
         return True
     return False
     
-def VerifierColonne(col):
+def VerifierColonne(col, tableau):
     for x in range(5, -1, -1):
-        if jeu[col - 1][x].getImage() == None:
+        if tableau[col - 1][x].getImage() == None:
             return x
     return -1
 
-def PrintJeu():
+def PrintJeu(tableau):
     print("")
     for y in range(6):
         ligne = ""
         for x in range(7):
-            if (jeu[x][y].getImage() != None):
-                ligne += str(jeu[x][y].couleur.value) + " "
+            if (tableau[x][y].getImage() != None):
+                ligne += str(tableau[x][y].couleur.value) + " "           
             else:
                 ligne += "0 "
         print(ligne)
@@ -116,6 +121,7 @@ def RedemarrerJeu():
         for x in range(7):
             jeu[x][y] = Jeton(None, None, None)
     compteurMove = 0
+    gameOver = False
     print("Nouvelle partie")
 
 def Button(gauche, dessus, largeur, hauteur, texte, police):
@@ -124,65 +130,188 @@ def Button(gauche, dessus, largeur, hauteur, texte, police):
     pygame.draw.rect(display_surface, (102, 102, 102), pygame.Rect(gauche,dessus, text.get_width(), text.get_height()))
     display_surface.blit(text , (0,0))
 
-def TestGagnant(x, y, couleur):
-    if TestVertical(x, couleur) or TestHorizontal(y, couleur) or TestDiagonal(x, y, couleur):
-        print("")
-        print("WIN")
-        print("")
+def TestGagnant(x, y, couleur, tableau):
+    if TestVertical(x, couleur, tableau) or TestHorizontal(y, couleur, tableau) or TestDiagonal(x, y, couleur, tableau):
+        if (tableau == jeu):
+            print("")
+            print("WIN " + str(couleur))
+            gameOver = True
+        return True
     
-def TestVertical(x, couleur):
+def TestVertical(x, couleur, tableau):
     compteur = 0
     for y in range(5, -1, -1):
-        if jeu[x][y].getImage() != None:
-            if jeu[x][y].couleur == couleur:
+        if tableau[x][y].getImage() != None:
+            if tableau[x][y].couleur == couleur:
                 compteur += 1
-                
-    if compteur >= 4:
-        return True
-    else:
-        return False
-    
-def TestHorizontal(y, couleur):
-    compteur = 0
-    for x in range(6, -1, -1):
-        if jeu[x][y].getImage() != None:
-            if jeu[x][y].couleur == couleur:
-                compteur += 1
+                if compteur >= 4:
+                    return True
             else:
-                compteurMove = 0
-                
-    if compteur >= 4:
-        return True
-    else:
-        return False
+                compteur = 0
+        else:
+            compteur = 0
+
+    return False
     
-def TestHorizontal(y, couleur):
+def TestHorizontal(y, couleur, tableau):
     compteur = 0
     for x in range(6, -1, -1):
-        if jeu[x][y].getImage() != None:
-            if jeu[x][y].couleur == couleur:
-                compteur += 1
+        if tableau[x][y].getImage() != None:
+            if tableau[x][y].couleur == couleur:
+                compteur += 1            
+                if compteur >= 4:
+                    return True
+            else:
+                compteur = 0
+        else:
+            compteur = 0
+
+    return False
+    
+def TestDiagonal(x, y, couleur, tableau):
+    test = [[None for i in range(6)] for j in range(7)]
+    
+    compteur = 0
+    
+    for i in range(8):
+        xPos = x + (i - 4)
+        yPos = y + (i - 4)
+        if (xPos >= 0 and xPos < 7 and yPos >= 0 and yPos < 6):
+            test[xPos][yPos] = 1
+            if (tableau[xPos][yPos].getImage() != None):
+                #print("yo " + str(tableau[xPos][yPos].couleur))
+                if (tableau[xPos][yPos].couleur == couleur):
+                    compteur += 1
+                else:
+                    compteur = 0
             else:
                 compteur = 0
                 
-    if compteur >= 4:
-        return True
-    else:
-        return False
-    
-def TestDiagonal(x, y, couleur):
+        if (compteur >= 4):
+            return True
+
     compteur = 0
-    for i in range(3):
-        print(str(i - x) + " " + str(i - y))
-        if jeu[x - i][y - i].getImage() != None:
-            print(jeu[x - i][y - i].couleur)
-            if jeu[x - i][y - i].couleur == couleur:
-                PlacerJeton(x, Couleur.JAUNE)
+    
+    for i in range(8):
+        xPos = x - (i - 4)
+        yPos = y + (i - 4)
+        if (xPos >= 0 and xPos < 7 and yPos >= 0 and yPos < 6):
+            test[xPos][yPos] = 2
+            if (tableau[xPos][yPos].getImage() != None):
+                if (tableau[xPos][yPos].couleur == couleur):
+                    compteur += 1
+                    if (compteur >= 4):
+                        return True
+                else:
+                    compteur = 0
+            else:
+                compteur = 0
                 
-    if compteur >= 4:
-        return True
-    else:
-        return False
+        if (compteur >= 4):
+            return True
+    """                
+    print("Test ") 
+    for y in range(6):
+        ligne = ""
+        for x in range(7):
+            if (test[x][y] != None):
+                ligne += str(test[x][y]) + " "           
+            else:
+                ligne += "0 "
+        print(ligne)
+    print("")
+    """
+        
+    return False
+
+def ColonneRandom ():
+    return random.randrange(7) + 1
+
+def premierNiveau(profondeur, joueur):
+    tableau = [[Jeton(None, [0, 0], None) for i in range(6)] for j in range(7)]
+    
+    for y in range(6):
+        for x in range(7):
+            if (jeu[x][y].getImage() != None):
+                tableau[x][y] = jeu[x][y]
+                  
+    for x in range(profondeur):
+        oldX = None
+        oldY = None
+        
+        for i in range(8):
+            rangee = VerifierColonne(i, tableau)       
+            if rangee > -1:
+                if oldX != None and oldY != None:
+                    tableau[oldX][oldY] = Jeton(None, [0, 0], None)
+                    
+                PlacerJeton(i, Couleur.ROUGE, tableau)
+                oldX = i - 1
+                oldY = rangee
+                 
+                if TestGagnant(i - 1, rangee, Couleur.ROUGE, tableau):
+                    print("haha")
+                    if i == 0:
+                        i = 7
+                    return i
+                         
+                if oldX != None and oldY != None:
+                    tableau[oldX][oldY] = Jeton(None, [0, 0], None)
+                    
+                PlacerJeton(i, Couleur.JAUNE, tableau)
+                oldX = i - 1
+                oldY = rangee
+                 
+                if TestGagnant(i - 1, rangee, Couleur.JAUNE, tableau):
+                    print("je t'ai vu")
+                    if i == 0:
+                        i = 7
+                    return i
+        PrintJeu(tableau)
+    return ColonneRandom()
+
+def deuxiemeNiveau(profondeur, joueur):
+    tableau = [[Jeton(None, [0, 0], None) for i in range(6)] for j in range(7)]
+    
+    for y in range(6):
+        for x in range(7):
+            if (jeu[x][y].getImage() != None):
+                tableau[x][y] = jeu[x][y]
+                  
+    for x in range(profondeur):
+        oldX = None
+        oldY = None
+        
+        for i in range(8):
+            rangee = VerifierColonne(i, tableau)       
+            if rangee > -1:
+                if oldX != None and oldY != None:
+                    tableau[oldX][oldY] = Jeton(None, [0, 0], None)
+                    
+                PlacerJeton(i, Couleur.ROUGE, tableau)
+                oldX = i - 1
+                oldY = rangee
+                 
+                if TestGagnant(i - 1, rangee, Couleur.ROUGE, tableau):
+                    print("haha")
+                    if i == 0:
+                        i = 7
+                    return i
+                         
+                if oldX != None and oldY != None:
+                    tableau[oldX][oldY] = Jeton(None, [0, 0], None)
+                    
+                PlacerJeton(i, Couleur.JAUNE, tableau)
+                oldX = i - 1
+                oldY = rangee
+                 
+                if TestGagnant(i - 1, rangee, Couleur.JAUNE, tableau):
+                    print("je t'ai vu")
+                    if i == 0:
+                        i = 7
+                    return i
+        PrintJeu(tableau)
+    return ColonneRandom()     
 
 while True :
     display_surface.fill(noir)
@@ -203,18 +332,22 @@ while True :
             quit()
         
         if event.type == pygame.MOUSEBUTTONDOWN :
-            x,y = pygame.mouse.get_pos()
-            
-            if (y > 50) :       
-                if compteurMove % 2 == 0:
-                    if PlacerJeton(GetColoneSelected(), Couleur.JAUNE):
-                        compteurMove += 1
+            if gameOver == False:
+                x,y = pygame.mouse.get_pos()
+                
+                if (y > 50) :       
+                    if compteurMove % 2 == 0:
+                        if PlacerJeton(GetColoneSelected(), Couleur.JAUNE, jeu):
+                            compteurMove += 1
+                            if gameOver == False:
+                                PlacerJeton(MinMax(1, Couleur.ROUGE), Couleur.ROUGE, jeu)
+                                compteurMove += 1                                          
+                    #else:
+                    #    if PlacerJeton(ColonneRandom(), Couleur.ROUGE):
+                    #        compteurMove += 1
+                            
+                    #PrintJeu()
                 else:
-                    if PlacerJeton(GetColoneSelected(), Couleur.ROUGE):
-                        compteurMove += 1
-                        
-                PrintJeu()
-            else:
-                RedemarrerJeu()
+                    RedemarrerJeu()
         
         pygame.display.update()
