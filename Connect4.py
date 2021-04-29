@@ -6,6 +6,8 @@ from enum import Enum
 import random
 import copy
 
+#https://medium.com/analytics-vidhya/artificial-intelligence-at-play-connect-four-minimax-algorithm-explained-3b5fc32e4a4f
+
 pygame.init()
 pygame.font.init()
 
@@ -88,13 +90,12 @@ def PlacerJeton (col, couleur, tableau):
     else:
         jeton = jetonRouge
     
-    range = VerifierColonne(col, tableau)
+    rangee = VerifierColonne(col, tableau)
     
-    if range > -1:
-        print("Placé " + str(col - 1) + " " + str(range))
-        tableau[col - 1][range] = Jeton(jeton, [(col - 1) * 108 + 26, range * 108 + 83], couleur)
+    if rangee > -1:
+        tableau[col - 1][rangee] = Jeton(jeton, [(col - 1) * 108 + 26, rangee * 108 + 83], couleur)
         #print("Jeton placé")
-        TestGagnant(col - 1, range, couleur, tableau)
+        TestGagnant(col - 1, rangee, couleur, tableau)
         return True
     return False
     
@@ -134,8 +135,8 @@ def TestGagnant(x, y, couleur, tableau):
     if TestVertical(x, couleur, tableau) or TestHorizontal(y, couleur, tableau) or TestDiagonal(x, y, couleur, tableau):
         if (tableau == jeu):
             print("")
-            print("WIN " + str(couleur))
             gameOver = True
+            print("WIN " + str(couleur))
         return True
     
 def TestVertical(x, couleur, tableau):
@@ -250,7 +251,6 @@ def premierNiveau(profondeur, joueur):
                 oldY = rangee
                  
                 if TestGagnant(i - 1, rangee, Couleur.ROUGE, tableau):
-                    print("haha")
                     if i == 0:
                         i = 7
                     return i
@@ -263,14 +263,69 @@ def premierNiveau(profondeur, joueur):
                 oldY = rangee
                  
                 if TestGagnant(i - 1, rangee, Couleur.JAUNE, tableau):
-                    print("je t'ai vu")
                     if i == 0:
                         i = 7
                     return i
-        PrintJeu(tableau)
+        #PrintJeu(tableau)
     return ColonneRandom()
 
-def deuxiemeNiveau(profondeur, joueur):
+def deuxiemeNiveau(profondeur, couleur):
+    
+    tableau = [[Jeton(None, [0, 0], None) for i in range(6)] for j in range(7)]
+    
+    for y in range(6):
+        for x in range(7):
+            if (jeu[x][y].getImage() != None):
+                tableau[x][y] = jeu[x][y]
+                
+    tabScore = [0, 0, 0, 0, 0, 0, 0]
+                
+    MiniMax(tableau, 6, couleur, tabScore)
+    
+    print("fini " + str(tabScore) + " " + str(max(range(len(tabScore)), key=tabScore.__getitem__)))
+
+    return max(range(len(tabScore)), key=tabScore.__getitem__) + 1
+
+def MiniMax(tableau, profondeur, couleur, tabScore) :
+    if profondeur == 0:
+        return
+    
+    oldX = None
+    oldY = None
+        
+    for i in range(7):
+        if oldX != None and oldY != None:
+            tableau[oldX][oldY] = Jeton(None, [0, 0], None)
+        rangee = VerifierColonne(i + 1, tableau)       
+        if rangee > -1:          
+            tempCouleur = None
+            tempJeton = None
+            
+            if couleur == Couleur.JAUNE:                                          
+                tempCouleur = couleur.ROUGE
+                tempJeton = jetonRouge
+            else:
+                tempCouleur = couleur.JAUNE
+                tempJeton = jetonJaune
+                
+            oldX = i
+            oldY = rangee
+            
+            tableau[oldX][oldY] = Jeton(tempJeton, [0, 0], tempCouleur)
+            
+            if couleur == Couleur.JAUNE:                                          
+                if TestGagnant(oldX, rangee, Couleur.ROUGE, tableau):
+                    tabScore[i] += 10 * profondeur
+            else:
+                if TestGagnant(oldX, rangee, Couleur.JAUNE, tableau):
+                    tabScore[i] += 5 * profondeur
+                                 
+            MiniMax(tableau, profondeur - 1, tempCouleur, tabScore)
+            
+    if oldX != None and oldY != None:
+        tableau[oldX][oldY] = Jeton(None, [0, 0], None)
+    
+def troisiemeNiveau(profondeur, couleur):
     tableau = [[Jeton(None, [0, 0], None) for i in range(6)] for j in range(7)]
     
     for y in range(6):
@@ -293,7 +348,6 @@ def deuxiemeNiveau(profondeur, joueur):
                 oldY = rangee
                  
                 if TestGagnant(i - 1, rangee, Couleur.ROUGE, tableau):
-                    print("haha")
                     if i == 0:
                         i = 7
                     return i
@@ -306,12 +360,265 @@ def deuxiemeNiveau(profondeur, joueur):
                 oldY = rangee
                  
                 if TestGagnant(i - 1, rangee, Couleur.JAUNE, tableau):
-                    print("je t'ai vu")
                     if i == 0:
                         i = 7
                     return i
-        PrintJeu(tableau)
-    return ColonneRandom()     
+        #PrintJeu(tableau)
+    return deuxiemeNiveau(profondeur, couleur)
+"""
+def MoveGagnant(tableau, couleur):
+    nouveauTableau = [[Jeton(None, [0, 0], None) for i in range(6)] for j in range(7)]
+    
+    for y in range(6):
+        for x in range(7):
+            if (tableau[x][y].cou != None):
+                nouveauTableau[x][y] = tableau[x][y]
+                
+    for i in range(8):
+        rangee = VerifierColonne(i, tableau)
+        PlacerJeton(i, couleur, tableau)
+        if (TestGagnant)
+"""
+
+def verifierMoveGagnant(couleur, tableau):
+    oldX = None
+    oldY = None
+        
+    for i in range(7):
+        if oldX != None and oldY != None:
+            tableau[oldX][oldY] = Jeton(None, [0, 0], None)
+        rangee = VerifierColonne(i + 1, tableau)       
+        if rangee > -1:          
+            tempCouleur = None
+            tempJeton = None
+            
+            if couleur == Couleur.JAUNE:                                          
+                tempCouleur = couleur.ROUGE
+                tempJeton = jetonRouge
+            else:
+                tempCouleur = couleur.JAUNE
+                tempJeton = jetonJaune
+                
+            oldX = i
+            oldY = rangee
+            
+            tableau[oldX][oldY] = Jeton(tempJeton, [0, 0], tempCouleur)
+                                                    
+            if TestGagnant(oldX, rangee, couleur, tableau):
+                return True  
+            
+    if oldX != None and oldY != None:
+        tableau[oldX][oldY] = Jeton(None, [0, 0], None)
+        
+    return False
+
+def donnerScore (compteur, compteurEnnemi, compteurVide):
+    score = 0
+    
+    if (compteur == 4):
+        score += 100     
+    
+    if (compteur == 3):
+        score += 5
+        
+    if (compteur == 2):
+        score += 2
+            
+    if (compteurEnnemi):
+        score -= 4
+        
+    return score
+
+
+def ScoreTableau(tableau, couleur):
+    score = 0
+    
+    compteur = 0
+    compteurEnnemi = 0
+    compteurVide = 0
+    
+    ennemi = None
+    
+    if couleur == Couleur.JAUNE:
+        ennemi = Couleur.ROUGE
+    else:
+        ennemi = Couleur.JAUNE
+    
+    for x in range(7):
+        compteur = 0
+        compteurEnnemi = 0
+        compteurVide = 0
+        
+        for y in range(6):
+            if tableau[x][y].couleur == couleur:
+                compteur += 1
+            elif tableau[x][y].couleur == ennemi:
+                compteurEnnemi += 1
+            else:
+                compteurVide += 1
+                
+        score += donnerScore(compteur, compteurEnnemi, compteurVide)
+    
+    for x in range(7):
+        compteur = 0
+        compteurEnnemi = 0
+        compteurVide = 0
+        
+        for y in range(6):
+            if tableau[x][y].couleur == couleur:
+                compteur += 1
+            elif tableau[x][y].couleur == ennemi:
+                compteurEnnemi += 1
+            else:
+                compteurVide += 1
+                
+        score += donnerScore(compteur, compteurEnnemi, compteurVide)
+            
+    for y in range(6):
+        for x in range(7):
+            compteurEnnemi = 0
+            compteur = 0
+            compteurVide = 0
+            
+            for i in range(8):
+                xPos = x + (i - 4)
+                yPos = y + (i - 4)
+                if (xPos >= 0 and xPos < 7 and yPos >= 0 and yPos < 6):
+                    if tableau[xPos][yPos].couleur == couleur:
+                        compteur += 1
+                    elif tableau[xPos][yPos].couleur == ennemi:
+                        compteurEnnemi += 1
+                    else:
+                        compteurVide += 1
+
+            score += donnerScore(compteur, compteurEnnemi, compteurVide)
+             
+    for y in range(6):
+        for x in range(7):
+            compteurEnnemi = 0
+            compteur = 0
+            compteurVide = 0
+            
+            for i in range(8):
+                xPos = x - (i - 4)
+                yPos = y + (i - 4)
+                if (xPos >= 0 and xPos < 7 and yPos >= 0 and yPos < 6):
+                    if tableau[xPos][yPos].couleur == couleur:
+                        compteur += 1
+                    elif tableau[xPos][yPos].couleur == ennemi:
+                        compteurEnnemi += 1
+                    else:
+                        compteurVide += 1
+                        
+            score += donnerScore(compteur, compteurEnnemi, compteurVide)
+    
+    return score
+
+def EstDernierMove(tableau):
+    if TestGagnantFinal(tableau) != None:
+        return True
+    else:
+        return False
+    
+def TestGagnantFinal(tableau):
+    for y in range(6):
+        for x in range(7):
+            if (tableau[x][y].couleur != None):
+                if TestGagnant(x, y, Couleur.ROUGE, tableau):
+                    return Couleur.ROUGE
+                
+                if TestGagnant(x, y, Couleur.JAUNE, tableau):
+                    return Couleur.JAUNE
+    return None 
+
+    
+def BonMiniMax(tableau, profondeur, maximize, alpha, beta) :
+    if EstDernierMove(tableau) or profondeur == 0:
+        if EstDernierMove(tableau):
+            if TestGagnantFinal(tableau) == Couleur.ROUGE:
+                return None, 1000000
+            if TestGagnantFinal(tableau) == Couleur.JAUNE:
+                return None, -1000000
+            else:
+                return None, 0 
+        else:
+            return None, ScoreTableau(tableau, Couleur.ROUGE)
+    
+    if maximize:        
+        bestScore = -math.inf
+        colonne = 0
+            
+        for i in range(7):
+            rangee = VerifierColonne(i + 1, tableau)       
+            if rangee > -1:          
+                tempCouleur = None
+                tempJeton = None
+                    
+                x = i
+                y = rangee
+                
+                tableau[x][y] = Jeton(jetonRouge, [0, 0], Couleur.ROUGE)
+                
+                nouvColonne, score = BonMiniMax(tableau, profondeur - 1, False, alpha, beta)
+                
+                tableau[x][y] = Jeton(None, [0, 0], None)
+                
+                #print("mazimize " + str(score))
+                
+                if bestScore < score:
+                    colonne = i
+                    bestScore = score
+                    
+                alpha = max(alpha, bestScore)
+                if alpha >= beta:
+                    break
+                
+        return colonne, bestScore
+    else:
+        bestScore = math.inf
+        colonne = 0
+            
+        for i in range(7):
+            rangee = VerifierColonne(i + 1, tableau)       
+            if rangee > -1:          
+                tempCouleur = None
+                tempJeton = None
+                
+                x = i
+                y = rangee
+                
+                tableau[x][y] = Jeton(jetonJaune, [0, 0], Couleur.JAUNE)
+                             
+                nouvColonne, score = BonMiniMax(tableau, profondeur - 1, True, alpha, beta)
+                
+                tableau[x][y] = Jeton(None, [0, 0], None)   
+                
+                if bestScore > score:
+                    colonne = i
+                    bestScore = score
+                    
+                beta = min(beta, bestScore)
+                if alpha >= beta:
+                    break
+                
+        return colonne, bestScore
+
+def quatriemeNiveau (profondeur, couleur):
+
+    tableau = [[Jeton(None, [0, 0], None) for i in range(6)] for j in range(7)]
+    
+    for y in range(6):
+        for x in range(7):
+            if (jeu[x][y].getImage() != None):
+                tableau[x][y] = jeu[x][y]
+                
+    colonne, score = BonMiniMax(tableau, 6, True, -math.inf, math.inf)
+    
+    print(str(colonne) + " " + str(score))
+    if colonne != None:
+        return colonne + 1
+    else:
+        return -1
 
 while True :
     display_surface.fill(noir)
@@ -340,8 +647,10 @@ while True :
                         if PlacerJeton(GetColoneSelected(), Couleur.JAUNE, jeu):
                             compteurMove += 1
                             if gameOver == False:
-                                PlacerJeton(MinMax(1, Couleur.ROUGE), Couleur.ROUGE, jeu)
-                                compteurMove += 1                                          
+                                colonne = quatriemeNiveau(1, Couleur.ROUGE)
+                                if colonne != -1:
+                                    PlacerJeton(colonne, Couleur.ROUGE, jeu)
+                                    compteurMove += 1                                          
                     #else:
                     #    if PlacerJeton(ColonneRandom(), Couleur.ROUGE):
                     #        compteurMove += 1
