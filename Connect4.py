@@ -5,6 +5,8 @@ from pygame.locals import *
 from enum import Enum
 import random
 import copy
+import threading
+import time
 
 #https://medium.com/analytics-vidhya/artificial-intelligence-at-play-connect-four-minimax-algorithm-explained-3b5fc32e4a4f
 
@@ -14,7 +16,7 @@ pygame.font.init()
 X = 800
 Y = 800
 
-display_surface = pygame.display.set_mode((X, Y ))
+display_surface = pygame.display.set_mode((X, Y + 32 ))
 
 noir = (0, 0, 0)
 blanc = (255, 255, 255)
@@ -22,6 +24,7 @@ blanc = (255, 255, 255)
 jeu_path = os.path.dirname(__file__)
 
 images_path = os.path.join(jeu_path, "Resources\Images")
+loading_path = os.path.join(jeu_path, "Resources\Images\Loading")
 
 jetonJaune = pygame.image.load(os.path.join(images_path, "Jaune.png"))
 jetonJaune = pygame.transform.scale(jetonJaune, (100, 100))
@@ -36,6 +39,8 @@ cercles = pygame.image.load(os.path.join(images_path, "Cercles.png"))
 cercles = pygame.transform.scale(cercles, (800, 800))
 
 gameOver = False
+
+colonneJoueIA = -2
 
 class Couleur(Enum):
     JAUNE = 1
@@ -68,9 +73,24 @@ jeu = [[Jeton(None, [0, 0], None) for i in range(6)] for j in range(7)]
 
 compteurMove = 0
 
+loadingImages = []
+
 # Range 1 : 133     Range 2 : 242          Entre les rangées : 108
 
 # Colonne 1 : 76    Colonne 2 : 184        Entre les colonnes : 108
+
+loadingLoaded = False
+
+def LoadLoading():
+    for i in range(28):
+        if (i < 10):
+            path = "tile00" + str(i) + ".png"
+            loadingImages.append(pygame.image.load(os.path.join(loading_path, path)))
+        else:
+            path = "tile0" + str(i) + ".png"
+            loadingImages.append(pygame.image.load(os.path.join(loading_path, path)))
+            
+    loadingLoaded = True
 
 def GetColoneSelected ():
     x,y = pygame.mouse.get_pos()
@@ -129,7 +149,7 @@ def Button(gauche, dessus, largeur, hauteur, texte, police):
     smallfont = pygame.font.SysFont('Corbel', police)
     text = smallfont.render(texte , True , blanc)
     pygame.draw.rect(display_surface, (102, 102, 102), pygame.Rect(gauche,dessus, text.get_width(), text.get_height()))
-    display_surface.blit(text , (0,0))
+    display_surface.blit(text , (gauche,dessus))
 
 def TestGagnant(x, y, couleur, tableau):
     if TestVertical(x, couleur, tableau) or TestHorizontal(y, couleur, tableau) or TestDiagonal(x, y, couleur, tableau):
@@ -418,13 +438,13 @@ def donnerScore (compteur, compteurEnnemi, compteurVide):
     if (compteur == 4):
         score += 100     
     
-    if (compteur == 3):
+    if (compteur == 3 and compteurVide >= 1):
         score += 5
         
-    if (compteur == 2):
+    if (compteur == 2 and compteurVide >= 2):
         score += 2
             
-    if (compteurEnnemi):
+    if (compteurEnnemi == 3 and compteurVide >= 1):
         score -= 4
         
     return score
@@ -535,14 +555,14 @@ def TestGagnantFinal(tableau):
 def BonMiniMax(tableau, profondeur, maximize, alpha, beta) :
     if EstDernierMove(tableau) or profondeur == 0:
         if EstDernierMove(tableau):
-            if TestGagnantFinal(tableau) == Couleur.ROUGE:
-                return None, 1000000
             if TestGagnantFinal(tableau) == Couleur.JAUNE:
-                return None, -1000000
+                return None, 1000000
+            elif TestGagnantFinal(tableau) == Couleur.ROUGE:
+                return None, -1000000 - profondeur
             else:
                 return None, 0 
         else:
-            return None, ScoreTableau(tableau, Couleur.ROUGE)
+            return None, ScoreTableau(tableau, Couleur.JAUNE)
     
     if maximize:        
         bestScore = -math.inf
@@ -557,7 +577,7 @@ def BonMiniMax(tableau, profondeur, maximize, alpha, beta) :
                 x = i
                 y = rangee
                 
-                tableau[x][y] = Jeton(jetonRouge, [0, 0], Couleur.ROUGE)
+                tableau[x][y] = Jeton(jetonJaune, [0, 0], Couleur.JAUNE)
                 
                 nouvColonne, score = BonMiniMax(tableau, profondeur - 1, False, alpha, beta)
                 
@@ -571,8 +591,8 @@ def BonMiniMax(tableau, profondeur, maximize, alpha, beta) :
                     
                 alpha = max(alpha, bestScore)
                 if alpha >= beta:
-                    break
-                
+                    break    
+                      
         return colonne, bestScore
     else:
         bestScore = math.inf
@@ -584,10 +604,10 @@ def BonMiniMax(tableau, profondeur, maximize, alpha, beta) :
                 tempCouleur = None
                 tempJeton = None
                 
-                x = i
+                x = i 
                 y = rangee
                 
-                tableau[x][y] = Jeton(jetonJaune, [0, 0], Couleur.JAUNE)
+                tableau[x][y] = Jeton(jetonRouge, [0, 0], Couleur.ROUGE)
                              
                 nouvColonne, score = BonMiniMax(tableau, profondeur - 1, True, alpha, beta)
                 
@@ -596,7 +616,7 @@ def BonMiniMax(tableau, profondeur, maximize, alpha, beta) :
                 if bestScore > score:
                     colonne = i
                     bestScore = score
-                    
+                
                 beta = min(beta, bestScore)
                 if alpha >= beta:
                     break
@@ -604,7 +624,7 @@ def BonMiniMax(tableau, profondeur, maximize, alpha, beta) :
         return colonne, bestScore
 
 def quatriemeNiveau (profondeur, couleur):
-
+    global colonneJoueIA
     tableau = [[Jeton(None, [0, 0], None) for i in range(6)] for j in range(7)]
     
     for y in range(6):
@@ -612,26 +632,51 @@ def quatriemeNiveau (profondeur, couleur):
             if (jeu[x][y].getImage() != None):
                 tableau[x][y] = jeu[x][y]
                 
-    colonne, score = BonMiniMax(tableau, 6, True, -math.inf, math.inf)
+    colonne, score = BonMiniMax(tableau, 6, False, -math.inf, math.inf)
     
-    print(str(colonne) + " " + str(score))
+    print(str(colonne + 1) + " " + str(score))
     if colonne != None:
-        return colonne + 1
+        colonneJoueIA = colonne + 1
     else:
-        return -1
+        colonneJoueIA = -1
+    
+jouerIA = False
+penseAI = False
+compteurFrame = 0
 
-while True :
+clock = pygame.time.Clock()
+
+nomFonctionLevel = "ColonneRandom"
+    
+while True : 
+    if loadingLoaded == False:
+        LoadLoading()
+
     display_surface.fill(noir)
 
     Button(0, 0, 180, 180, "Recommencer", 30)
     
-    for y in range(6):
-        for x in range(7):
-            if jeu[x][y].getImage() != None:
-                display_surface.blit(jeu[x][y].getImage(), (jeu[x][y].position[0], jeu[x][y].position[1]))
+    Button(200, 0, 180, 180, "Niveau 1", 30)
+    
+    Button(310, 0, 180, 180, "Niveau 2", 30)
+    
+    Button(420, 0, 180, 180, "Niveau 3", 30)
+    
+    Button(530, 0, 180, 180, "Niveau 4", 30)
+    
+    Button(640, 0, 180, 180, "Niveau 5", 30)
 
-    display_surface.blit(fond, (0, 0))
-    display_surface.blit(cercles, (0, 0))
+    if jouerIA :
+        th = threading.Thread(target=quatriemeNiveau, args=(1,Couleur.ROUGE))
+        th.start()
+        penseAI = True
+        jouerIA = False
+        
+    if colonneJoueIA != -2:   
+        PlacerJeton(colonneJoueIA, Couleur.ROUGE, jeu)
+        colonneJoueIA = -2
+        compteurMove += 1
+        penseAI = False
 
     for event in pygame.event.get() :
         if event.type == pygame.QUIT :
@@ -641,22 +686,28 @@ while True :
         if event.type == pygame.MOUSEBUTTONDOWN :
             if gameOver == False:
                 x,y = pygame.mouse.get_pos()
-                
-                if (y > 50) :       
+                if y > 50:                   
                     if compteurMove % 2 == 0:
                         if PlacerJeton(GetColoneSelected(), Couleur.JAUNE, jeu):
                             compteurMove += 1
-                            if gameOver == False:
-                                colonne = quatriemeNiveau(1, Couleur.ROUGE)
-                                if colonne != -1:
-                                    PlacerJeton(colonne, Couleur.ROUGE, jeu)
-                                    compteurMove += 1                                          
-                    #else:
-                    #    if PlacerJeton(ColonneRandom(), Couleur.ROUGE):
-                    #        compteurMove += 1
-                            
-                    #PrintJeu()
+                            jouerIA = True 
                 else:
                     RedemarrerJeu()
+                    
+    for y in range(6):
+        for x in range(7):
+            if jeu[x][y].getImage() != None:
+                display_surface.blit(jeu[x][y].getImage(), (jeu[x][y].position[0], jeu[x][y].position[1]))
+
+    display_surface.blit(fond, (0, 0))
+    display_surface.blit(cercles, (0, 0))
+    
+    if penseAI:
+        if compteurFrame < 27:
+            compteurFrame += 1
+        else:
+            compteurFrame = 0
+            
+        display_surface.blit(loadingImages[compteurFrame], (X / 2 - 32, Y - 32))
         
-        pygame.display.update()
+    pygame.display.update()
