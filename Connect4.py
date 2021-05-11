@@ -18,6 +18,8 @@ Y = 800
 
 display_surface = pygame.display.set_mode((X, Y + 32 ))
 
+pygame.display.set_caption("Connect4")
+
 noir = (0, 0, 0)
 blanc = (255, 255, 255)
 
@@ -40,7 +42,11 @@ cercles = pygame.transform.scale(cercles, (800, 800))
 
 gameOver = False
 
+couleurGagnante = None
+
 colonneJoueIA = -2
+
+niveauChoisi = 1
 
 class Couleur(Enum):
     JAUNE = 1
@@ -138,6 +144,7 @@ def PrintJeu(tableau):
     print("")
 
 def RedemarrerJeu():
+    global gameOver
     for y in range(6):
         for x in range(7):
             jeu[x][y] = Jeton(None, None, None)
@@ -145,16 +152,26 @@ def RedemarrerJeu():
     gameOver = False
     print("Nouvelle partie")
 
-def Button(gauche, dessus, largeur, hauteur, texte, police):
+def Button(gauche, dessus, largeur, hauteur, texte, police, gris = True):
     smallfont = pygame.font.SysFont('Corbel', police)
     text = smallfont.render(texte , True , blanc)
-    pygame.draw.rect(display_surface, (102, 102, 102), pygame.Rect(gauche,dessus, text.get_width(), text.get_height()))
+    if gris == True:
+        pygame.draw.rect(display_surface, (102, 102, 102), pygame.Rect(gauche,dessus, text.get_width(), text.get_height()))
+    else:
+        pygame.draw.rect(display_surface, (255, 0, 0), pygame.Rect(gauche,dessus, text.get_width(), text.get_height()))
+
     display_surface.blit(text , (gauche,dessus))
 
 def TestGagnant(x, y, couleur, tableau):
+    global gameOver
+    global couleurGagnante
     if TestVertical(x, couleur, tableau) or TestHorizontal(y, couleur, tableau) or TestDiagonal(x, y, couleur, tableau):
         if (tableau == jeu):
             print("")
+            if couleur == Couleur.ROUGE:
+                couleurGagnante = "Rouge"
+            else:
+                couleurGagnante = "Jaune"
             gameOver = True
             print("WIN " + str(couleur))
         return True
@@ -230,25 +247,17 @@ def TestDiagonal(x, y, couleur, tableau):
                 
         if (compteur >= 4):
             return True
-    """                
-    print("Test ") 
-    for y in range(6):
-        ligne = ""
-        for x in range(7):
-            if (test[x][y] != None):
-                ligne += str(test[x][y]) + " "           
-            else:
-                ligne += "0 "
-        print(ligne)
-    print("")
-    """
         
     return False
 
 def ColonneRandom ():
-    return random.randrange(7) + 1
+    global colonneJoueIA
+    
+    colonneJoueIA = random.randrange(7) + 1
+    return
 
 def premierNiveau(profondeur, joueur):
+    global colonneJoueIA
     tableau = [[Jeton(None, [0, 0], None) for i in range(6)] for j in range(7)]
     
     for y in range(6):
@@ -273,7 +282,8 @@ def premierNiveau(profondeur, joueur):
                 if TestGagnant(i - 1, rangee, Couleur.ROUGE, tableau):
                     if i == 0:
                         i = 7
-                    return i
+                    colonneJoueIA = i
+                    return
                          
                 if oldX != None and oldY != None:
                     tableau[oldX][oldY] = Jeton(None, [0, 0], None)
@@ -285,11 +295,14 @@ def premierNiveau(profondeur, joueur):
                 if TestGagnant(i - 1, rangee, Couleur.JAUNE, tableau):
                     if i == 0:
                         i = 7
-                    return i
-        #PrintJeu(tableau)
-    return ColonneRandom()
+                    colonneJoueIA = i
+                    return
+
+    ColonneRandom()
+    return
 
 def deuxiemeNiveau(profondeur, couleur):
+    global colonneJoueIA
     
     tableau = [[Jeton(None, [0, 0], None) for i in range(6)] for j in range(7)]
     
@@ -304,7 +317,8 @@ def deuxiemeNiveau(profondeur, couleur):
     
     print("fini " + str(tabScore) + " " + str(max(range(len(tabScore)), key=tabScore.__getitem__)))
 
-    return max(range(len(tabScore)), key=tabScore.__getitem__) + 1
+    colonneJoueIA = max(range(len(tabScore)), key=tabScore.__getitem__) + 1
+    return
 
 def MiniMax(tableau, profondeur, couleur, tabScore) :
     if profondeur == 0:
@@ -346,6 +360,8 @@ def MiniMax(tableau, profondeur, couleur, tabScore) :
         tableau[oldX][oldY] = Jeton(None, [0, 0], None)
     
 def troisiemeNiveau(profondeur, couleur):
+    global colonneJoueIA
+    
     tableau = [[Jeton(None, [0, 0], None) for i in range(6)] for j in range(7)]
     
     for y in range(6):
@@ -370,7 +386,8 @@ def troisiemeNiveau(profondeur, couleur):
                 if TestGagnant(i - 1, rangee, Couleur.ROUGE, tableau):
                     if i == 0:
                         i = 7
-                    return i
+                    colonneJoueIA = i
+                    return
                          
                 if oldX != None and oldY != None:
                     tableau[oldX][oldY] = Jeton(None, [0, 0], None)
@@ -382,23 +399,11 @@ def troisiemeNiveau(profondeur, couleur):
                 if TestGagnant(i - 1, rangee, Couleur.JAUNE, tableau):
                     if i == 0:
                         i = 7
-                    return i
-        #PrintJeu(tableau)
-    return deuxiemeNiveau(profondeur, couleur)
-"""
-def MoveGagnant(tableau, couleur):
-    nouveauTableau = [[Jeton(None, [0, 0], None) for i in range(6)] for j in range(7)]
-    
-    for y in range(6):
-        for x in range(7):
-            if (tableau[x][y].cou != None):
-                nouveauTableau[x][y] = tableau[x][y]
-                
-    for i in range(8):
-        rangee = VerifierColonne(i, tableau)
-        PlacerJeton(i, couleur, tableau)
-        if (TestGagnant)
-"""
+                    colonneJoueIA = i
+                    return
+
+    deuxiemeNiveau(profondeur, couleur)
+    return
 
 def verifierMoveGagnant(couleur, tableau):
     oldX = None
@@ -556,7 +561,7 @@ def BonMiniMax(tableau, profondeur, maximize, alpha, beta) :
     if EstDernierMove(tableau) or profondeur == 0:
         if EstDernierMove(tableau):
             if TestGagnantFinal(tableau) == Couleur.JAUNE:
-                return None, 1000000
+                return None, 1000000 + profondeur
             elif TestGagnantFinal(tableau) == Couleur.ROUGE:
                 return None, -1000000 - profondeur
             else:
@@ -582,9 +587,7 @@ def BonMiniMax(tableau, profondeur, maximize, alpha, beta) :
                 nouvColonne, score = BonMiniMax(tableau, profondeur - 1, False, alpha, beta)
                 
                 tableau[x][y] = Jeton(None, [0, 0], None)
-                
-                #print("mazimize " + str(score))
-                
+                       
                 if bestScore < score:
                     colonne = i
                     bestScore = score
@@ -648,12 +651,15 @@ clock = pygame.time.Clock()
 
 nomFonctionLevel = "ColonneRandom"
     
-while True : 
+while True :    
     if loadingLoaded == False:
         LoadLoading()
 
     display_surface.fill(noir)
-
+    
+    if gameOver == True:
+        Button(X / 2 - 85, Y - 32, 180, 180, str(couleurGagnante + " a gagné"), 30, False)
+ 
     Button(0, 0, 180, 180, "Recommencer", 30)
     
     Button(200, 0, 180, 180, "Niveau 1", 30)
@@ -665,9 +671,22 @@ while True :
     Button(530, 0, 180, 180, "Niveau 4", 30)
     
     Button(640, 0, 180, 180, "Niveau 5", 30)
-
+    
+    Button(765, 0, 50, 50, str(niveauChoisi), 30, False)
+    
     if jouerIA :
-        th = threading.Thread(target=quatriemeNiveau, args=(1,Couleur.ROUGE))
+        th = None
+        if niveauChoisi == 1:
+            th = threading.Thread(target=ColonneRandom)               
+        if niveauChoisi == 2:
+            th = threading.Thread(target=premierNiveau, args=(1,Couleur.ROUGE))            
+        if niveauChoisi == 3:
+            th = threading.Thread(target=deuxiemeNiveau, args=(1,Couleur.ROUGE))
+        if niveauChoisi == 4:
+            th = threading.Thread(target=troisiemeNiveau, args=(1,Couleur.ROUGE))
+        if niveauChoisi == 5:
+            th = threading.Thread(target=quatriemeNiveau, args=(1,Couleur.ROUGE))
+            
         th.start()
         penseAI = True
         jouerIA = False
@@ -684,15 +703,27 @@ while True :
             quit()
         
         if event.type == pygame.MOUSEBUTTONDOWN :
-            if gameOver == False:
-                x,y = pygame.mouse.get_pos()
-                if y > 50:                   
+            x,y = pygame.mouse.get_pos()
+            if y > 50:
+                if gameOver == False:                  
                     if compteurMove % 2 == 0:
                         if PlacerJeton(GetColoneSelected(), Couleur.JAUNE, jeu):
                             compteurMove += 1
-                            jouerIA = True 
-                else:
-                    RedemarrerJeu()
+                            if gameOver == False:
+                                jouerIA = True
+            else:         
+                if x > 200 and x < 310:
+                    niveauChoisi = 1
+                elif x > 310 and x < 420:
+                    niveauChoisi = 2
+                elif x > 420 and x < 530:
+                    niveauChoisi = 3
+                elif x > 530 and x < 640:
+                    niveauChoisi = 4
+                elif x > 640 and x < 750:
+                    niveauChoisi = 5
+
+                RedemarrerJeu()
                     
     for y in range(6):
         for x in range(7):
