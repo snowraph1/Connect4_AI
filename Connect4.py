@@ -145,10 +145,12 @@ def PrintJeu(tableau):
 
 def RedemarrerJeu():
     global gameOver
+    global colonneJoueIA
     for y in range(6):
         for x in range(7):
             jeu[x][y] = Jeton(None, None, None)
     compteurMove = 0
+    colonneJoueIA = -2
     gameOver = False
     print("Nouvelle partie")
 
@@ -576,9 +578,6 @@ def BonMiniMax(tableau, profondeur, maximize, alpha, beta) :
         for i in range(7):
             rangee = VerifierColonne(i + 1, tableau)       
             if rangee > -1:          
-                tempCouleur = None
-                tempJeton = None
-                    
                 x = i
                 y = rangee
                 
@@ -604,9 +603,6 @@ def BonMiniMax(tableau, profondeur, maximize, alpha, beta) :
         for i in range(7):
             rangee = VerifierColonne(i + 1, tableau)       
             if rangee > -1:          
-                tempCouleur = None
-                tempJeton = None
-                
                 x = i 
                 y = rangee
                 
